@@ -110,6 +110,29 @@
   .final-note{
     font-size:14px; line-height:1.7; color:var(--muted); font-style:italic; text-align:center; margin:8px 0 0;
   }
+
+  .confirmation{
+    display:none;
+    text-align:center;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:60px 30px;
+  }
+  .confirmation.show{ display:block; }
+  .confirmation-icon{
+    width:64px; height:64px; border-radius:50%;
+    background:var(--accent); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:32px; margin:0 auto 24px;
+  }
+  .confirmation h2{
+    font-family:'Georgia', serif; font-weight:400; font-size:26px;
+    color:var(--ink); margin:0 0 12px;
+  }
+  .confirmation p{
+    font-size:15px; color:var(--muted); line-height:1.6; margin:0;
+  }
 </style>
 </head>
 <body>
@@ -375,6 +398,12 @@
       <strong>Attivazione (2 minuti):</strong> registrati gratis su formspree.io, crea un form e copia l'endpoint generato (tipo <code>https://formspree.io/f/xxxxxxx</code>). Sostituisci <strong>TUO_ID_FORMSPREE</strong> nello script più sotto. Alla prima risposta ricevuta, Formspree ti manda una mail di conferma da approvare: dopo quella, ogni compilazione ti arriva via email in automatico, con tutte le risposte comprese quelle testuali e le selezioni multiple.
     </div>
   </form>
+
+  <div class="confirmation" id="confirmation">
+    <div class="confirmation-icon">✓</div>
+    <h2>Form inviato!</h2>
+    <p>Grazie per il tempo che ci hai dedicato. Il tuo feedback è stato ricevuto correttamente.</p>
+  </div>
 </div>
 
 <script>
@@ -388,10 +417,8 @@
         if(directAltroField){
           if(r.value === 'Altro'){
             directAltroField.classList.add('show');
-            directAltroField.required = true;
           } else {
             directAltroField.classList.remove('show');
-            directAltroField.required = false;
             directAltroField.value = '';
           }
         }
@@ -438,10 +465,8 @@
       const field = document.getElementById('q14-cosa');
       if(r.value === 'Sì'){
         field.classList.add('show');
-        field.required = true;
       } else {
         field.classList.remove('show');
-        field.required = false;
         field.value = '';
       }
     });
@@ -455,10 +480,25 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    btn.disabled = true;
-    btn.textContent = "Invio in corso...";
     status.className = "status";
     status.textContent = "";
+
+    // Controllo esplicito e visibile dei campi obbligatori mancanti
+    if (!form.checkValidity()) {
+      const firstInvalid = form.querySelector(':invalid');
+      status.className = "status err";
+      status.textContent = "Manca una risposta obbligatoria: controlla le domande evidenziate qui sopra.";
+      status.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (firstInvalid) {
+        const q = firstInvalid.closest('.q');
+        if (q) q.style.outline = '2px solid #A23B3B';
+        firstInvalid.focus({ preventScroll: true });
+      }
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Invio in corso...";
 
     const data = new FormData(form);
 
@@ -470,18 +510,16 @@
       });
 
       if (res.ok) {
-        status.className = "status ok";
-        status.textContent = "Grazie! Il tuo feedback è stato inviato con successo.";
-        form.reset();
-        document.querySelectorAll('.opt.checked').forEach(o => o.classList.remove('checked'));
-        document.querySelectorAll('.altro-text.show, .cond-text.show').forEach(a => a.classList.remove('show'));
-        document.getElementById('q9-quali-block').classList.remove('show');
+        form.style.display = "none";
+        document.getElementById('confirmation').classList.add('show');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         throw new Error("Errore invio");
       }
     } catch (err) {
       status.className = "status err";
       status.textContent = "Qualcosa è andato storto durante l'invio. Riprova tra poco.";
+      status.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } finally {
       btn.disabled = false;
       btn.textContent = "Invia il feedback";
